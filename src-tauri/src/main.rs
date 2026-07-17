@@ -1,3 +1,5 @@
 fn main() {
-    println!("LocalFirstLab Tauri backend placeholder");
+    tauri::Builder::default()
+        .run(tauri::generate_context!())
+        .expect("error while running StudySpace");
 }

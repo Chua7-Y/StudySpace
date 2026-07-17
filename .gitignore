@@ -1,24 +1,16 @@
-# Dependencies
 node_modules/
-
-# Build outputs
 dist/
-build/
-target/
+dist-ssr/
+
 src-tauri/target/
+src-tauri/gen/
 
-# Logs
+.DS_Store
 *.log
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-
-# Environment
+*.local
 .env
 .env.*
 !.env.example
 
-# OS / editor
-.DS_Store
-.idea/
 .vscode/
+.idea/
