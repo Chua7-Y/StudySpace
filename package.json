@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tauri dev",
+    "tauri": "tauri",
     "build": "tauri build",
     "vite:dev": "vite --host 127.0.0.1",
     "vite:build": "tsc && vite build",

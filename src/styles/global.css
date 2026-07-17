@@ -55,3 +55,9 @@ select {
   font-size: 1.125rem;
   line-height: 1.6;
 }
+
+.home-page .database-status {
+  margin-top: 28px;
+  color: #66727b;
+  font-size: 0.95rem;
+}
