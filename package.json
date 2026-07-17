@@ -1,0 +1,11 @@
+{
+  "name": "local-first-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A study and experiment project for local-first application patterns.",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {}
+}
