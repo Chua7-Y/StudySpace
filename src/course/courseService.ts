@@ -22,6 +22,12 @@ export async function listCourses(): Promise<Course[]> {
   });
 }
 
+export async function getCourse(id: string): Promise<Course> {
+  return invoke<Course>("get_course", { id }).catch((error) => {
+    throw toCourseServiceError(error, "课程加载失败");
+  });
+}
+
 export async function createCourse(input: CreateCourseInput): Promise<Course> {
   return invoke<Course>("create_course", {
     input: {

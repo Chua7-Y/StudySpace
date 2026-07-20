@@ -4,6 +4,7 @@ type CourseListProps = {
   courses: Course[];
   updatingCourseId: string | null;
   deletingCourseId: string | null;
+  onOpen: (course: Course) => void;
   onRename: (course: Course) => void;
   onDelete: (course: Course) => void;
 };
@@ -12,6 +13,7 @@ export function CourseList({
   courses,
   updatingCourseId,
   deletingCourseId,
+  onOpen,
   onRename,
   onDelete,
 }: CourseListProps) {
@@ -26,12 +28,10 @@ export function CourseList({
             <button
               className="course-card"
               type="button"
-              onClick={() => {
-                window.alert("Week 功能尚未实现");
-              }}
+              onClick={() => onOpen(course)}
             >
               <span className="course-name">{course.name}</span>
-              <span className="course-meta">Week 功能尚未实现</span>
+              <span className="course-meta">查看 Week</span>
             </button>
             <div className="course-actions">
               <button

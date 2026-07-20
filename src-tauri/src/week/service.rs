@@ -702,4 +702,58 @@ END;
             assert_eq!(count, 0);
         }
     }
+
+    #[test]
+    fn week_changes_persist_after_reopening_database() {
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let database_path = temp_dir.path().join("studyspace-week-persistence-test.db");
+        let mut connection = connection::open_database(&database_path).expect("open database");
+        migrations::run(&mut connection).expect("run migrations");
+        insert_course(&connection, "course-1", "Course 1");
+
+        let week_1 = create_week(&mut connection, "course-1", "Week 1");
+        let week_2 = create_week(&mut connection, "course-1", "Week 2");
+        let week_3 = create_week(&mut connection, "course-1", "Week 3");
+        drop(connection);
+
+        let mut connection = connection::open_database(&database_path).expect("reopen database");
+        let weeks = WeekService::list_by_course(&connection, "course-1".to_string()).unwrap();
+        assert_eq!(weeks.len(), 3);
+
+        WeekService::update_title(
+            &connection,
+            UpdateWeekInput {
+                id: week_2.id.clone(),
+                title: "Updated Week 2".to_string(),
+            },
+        )
+        .unwrap();
+        WeekService::update_status(
+            &connection,
+            UpdateWeekStatusInput {
+                id: week_2.id.clone(),
+                status: "organized".to_string(),
+            },
+        )
+        .unwrap();
+        WeekService::reorder(
+            &mut connection,
+            ReorderWeeksInput {
+                course_id: "course-1".to_string(),
+                week_ids: vec![week_3.id.clone(), week_2.id.clone(), week_1.id.clone()],
+            },
+        )
+        .unwrap();
+        WeekService::delete(&connection, week_1.id.clone()).unwrap();
+        drop(connection);
+
+        let connection = connection::open_database(&database_path).expect("reopen database again");
+        let weeks = WeekService::list_by_course(&connection, "course-1".to_string()).unwrap();
+        let ids = weeks.iter().map(|week| week.id.as_str()).collect::<Vec<_>>();
+
+        assert_eq!(ids, [week_3.id.as_str(), week_2.id.as_str()]);
+        assert_eq!(weeks[1].title, "Updated Week 2");
+        assert_eq!(weeks[1].status, WeekStatus::Organized);
+        assert!(!weeks.iter().any(|week| week.id == week_1.id));
+    }
 }
