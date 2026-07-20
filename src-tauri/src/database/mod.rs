@@ -46,6 +46,17 @@ impl DatabaseState {
         operation(&connection)
     }
 
+    pub fn with_connection_mut<T, E>(
+        &self,
+        operation: impl FnOnce(&mut Connection) -> Result<T, E>,
+    ) -> Result<T, E>
+    where
+        E: From<DatabaseError>,
+    {
+        let mut connection = self.connection.lock().map_err(|_| DatabaseError::Lock)?;
+        operation(&mut connection)
+    }
+
     pub fn health_check(&self) -> Result<DatabaseHealth, DatabaseError> {
         self.with_connection(|connection| {
             let schema_version = migrations::current_schema_version(connection)
