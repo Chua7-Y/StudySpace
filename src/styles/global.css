@@ -242,13 +242,155 @@ select {
   margin-top: 20px;
 }
 
+.course-detail-header {
+  align-items: flex-end;
+}
+
+.course-detail-header .secondary-button {
+  margin-bottom: 18px;
+}
+
+.week-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  user-select: none;
+}
+
+.week-list-shell {
+  position: relative;
+}
+
+.week-list-hint {
+  margin: 0 0 10px;
+  color: #66727b;
+  font-size: 0.92rem;
+}
+
+.week-item {
+  display: block;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #dfe3df;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: grab;
+  touch-action: none;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.week-item:active {
+  cursor: grabbing;
+}
+
+.week-item.is-dragging {
+  border-color: #285f55;
+  background: #f2f7f5;
+  box-shadow: 0 12px 28px rgba(40, 95, 85, 0.18);
+  opacity: 0.92;
+  transform: scale(1.015);
+}
+
+.week-item.is-drag-over {
+  border-color: #285f55;
+  background: #f2f7f5;
+}
+
+.week-summary {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.week-drag-handle {
+  color: #9aa5a0;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.week-index {
+  color: #66727b;
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.week-title-button {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #171b1f;
+  font-size: 1rem;
+  font-weight: 650;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.week-status {
+  width: fit-content;
+  padding: 2px 7px;
+  border: 1px solid #d8ded9;
+  border-radius: 6px;
+  background: #f6f7f4;
+  color: #4d5861;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.action-error {
+  margin: 0 0 16px;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid #c8d0cb;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(23, 27, 31, 0.18);
+}
+
+.context-menu button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #23302d;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu button:hover {
+  background: #f1f4f2;
+}
+
+.context-menu .context-menu-danger {
+  color: #a12b2b;
+}
+
 @media (max-width: 640px) {
   .home-page {
     padding: 28px 16px;
   }
 
   .home-header,
-  .course-item {
+  .course-item,
+  .week-item {
     display: flex;
     flex-direction: column;
   }
@@ -256,5 +398,13 @@ select {
   .course-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .week-summary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .week-index {
+    display: none;
   }
 }

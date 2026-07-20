@@ -23,7 +23,11 @@ type ActiveDialog =
   | { type: "delete"; course: Course }
   | null;
 
-export function HomePage() {
+type HomePageProps = {
+  onOpenCourse?: (courseId: string) => void;
+};
+
+export function HomePage({ onOpenCourse }: HomePageProps) {
   const {
     courses,
     isLoading,
@@ -129,6 +133,7 @@ export function HomePage() {
             courses={courses}
             updatingCourseId={updatingCourseId}
             deletingCourseId={deletingCourseId}
+            onOpen={(course) => onOpenCourse?.(course.id)}
             onRename={(course) => openDialog({ type: "rename", course })}
             onDelete={(course) => openDialog({ type: "delete", course })}
           />
