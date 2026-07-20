@@ -35,10 +35,13 @@ impl DatabaseState {
         }
     }
 
-    pub fn with_connection<T>(
+    pub fn with_connection<T, E>(
         &self,
-        operation: impl FnOnce(&Connection) -> Result<T, DatabaseError>,
-    ) -> Result<T, DatabaseError> {
+        operation: impl FnOnce(&Connection) -> Result<T, E>,
+    ) -> Result<T, E>
+    where
+        E: From<DatabaseError>,
+    {
         let connection = self.connection.lock().map_err(|_| DatabaseError::Lock)?;
         operation(&connection)
     }
