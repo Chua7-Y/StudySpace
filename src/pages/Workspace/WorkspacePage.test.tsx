@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Course } from "../../course/types";
 import type { LearningDocument } from "../../document/types";
 import type { SourceResource } from "../../resource/types";
@@ -25,7 +25,21 @@ const resourceServiceMocks = vi.hoisted(() => ({
   listSourceResources: vi.fn(),
   importSourceResources: vi.fn(),
   readSourceResourceText: vi.fn(),
-  getPreviewUrl: vi.fn(),
+  readSourceResourceBytes: vi.fn(),
+}));
+
+const pdfjsMocks = vi.hoisted(() => ({
+  getDocument: vi.fn(),
+  workerOptions: {},
+}));
+
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
+  getDocument: pdfjsMocks.getDocument,
+  GlobalWorkerOptions: pdfjsMocks.workerOptions,
+}));
+
+vi.mock("pdfjs-dist/legacy/build/pdf.worker.mjs?url", () => ({
+  default: "pdf.worker.mock.js",
 }));
 
 vi.mock("../../course/courseService", () => ({
@@ -52,7 +66,7 @@ vi.mock("../../resource/resourceService", () => ({
   listSourceResources: resourceServiceMocks.listSourceResources,
   importSourceResources: resourceServiceMocks.importSourceResources,
   readSourceResourceText: resourceServiceMocks.readSourceResourceText,
-  getPreviewUrl: resourceServiceMocks.getPreviewUrl,
+  readSourceResourceBytes: resourceServiceMocks.readSourceResourceBytes,
   getResourceErrorMessage: (error: unknown, fallback: string) =>
     error instanceof Error ? error.message : fallback,
 }));
@@ -131,7 +145,6 @@ async function renderWorkspace({
   weekServiceMocks.getWeek.mockResolvedValueOnce(week());
   resourceServiceMocks.listSourceResources.mockResolvedValueOnce(resources);
   documentServiceMocks.getLearningDocument.mockReturnValueOnce(documentPromise);
-  resourceServiceMocks.getPreviewUrl.mockImplementation((path: string) => `asset://${path}`);
 
   render(
     <WorkspacePage courseId="course-1" weekId="week-1" onBack={vi.fn()} />,
@@ -153,12 +166,38 @@ function documentPanel(): HTMLElement {
   return screen.getByRole("region", { name: "学习文档" });
 }
 
+function setEditorContent(editor: HTMLElement, content: string) {
+  editor.innerHTML = content;
+  fireEvent.input(editor);
+}
+
 describe("WorkspacePage", () => {
   const localStorageData = new Map<string, string>();
 
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageData.clear();
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:resource-preview");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      {} as CanvasRenderingContext2D,
+    );
+    pdfjsMocks.getDocument.mockReturnValue({
+      promise: Promise.resolve({
+        numPages: 2,
+        getPage: vi.fn().mockResolvedValue({
+          getViewport: vi.fn(({ scale }: { scale: number }) => ({
+            width: 200 * scale,
+            height: 280 * scale,
+          })),
+          render: vi.fn().mockReturnValue({ promise: Promise.resolve() }),
+        }),
+      }),
+    });
+    resourceServiceMocks.readSourceResourceBytes.mockResolvedValue({
+      bytes: [37, 80, 68, 70],
+      mimeType: "application/pdf",
+    });
     Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: {
@@ -174,6 +213,10 @@ describe("WorkspacePage", () => {
         }),
       },
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("显示三栏", async () => {
@@ -205,10 +248,14 @@ describe("WorkspacePage", () => {
       ],
     });
 
-    expect(within(previewPanel()).getByTitle("lecture03.pdf")).toBeInTheDocument();
+    expect(
+      within(previewPanel()).getByLabelText("lecture03.pdf 预览"),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /tutorial03.pdf/ }));
 
-    expect(within(previewPanel()).getByTitle("tutorial03.pdf")).toBeInTheDocument();
+    expect(
+      within(previewPanel()).getByLabelText("tutorial03.pdf 预览"),
+    ).toBeInTheDocument();
   });
 
   it("切换资源不影响第三栏内容", async () => {
@@ -221,11 +268,10 @@ describe("WorkspacePage", () => {
     });
 
     const editor = await screen.findByLabelText("文档内容");
-    await user.clear(editor);
-    await user.type(editor, "未保存的新内容");
+    setEditorContent(editor, "未保存的新内容");
     await user.click(screen.getByRole("button", { name: /diagram.png/ }));
 
-    expect(screen.getByLabelText("文档内容")).toHaveValue("未保存的新内容");
+    expect(screen.getByLabelText("文档内容")).toHaveTextContent("未保存的新内容");
   });
 
   it("无资源时显示空状态", async () => {
@@ -270,25 +316,121 @@ describe("WorkspacePage", () => {
   });
 
   it("PDF 类型进入 PDF Preview 分支", async () => {
+    const user = userEvent.setup();
     await renderWorkspace({
       resources: [resource({ originalFileName: "lecture.pdf", fileType: "pdf" })],
     });
 
-    expect(within(previewPanel()).getByTitle("lecture.pdf")).toHaveAttribute(
-      "src",
-      "asset:///tmp/lecture.pdf",
-    );
+    expect(await within(previewPanel()).findByText("第 1 / 2 页")).toBeInTheDocument();
+    expect(resourceServiceMocks.readSourceResourceBytes).toHaveBeenCalledWith("resource-1");
+    expect(pdfjsMocks.getDocument).toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "下一页" }));
+
+    expect(await within(previewPanel()).findByText("第 2 / 2 页")).toBeInTheDocument();
   });
 
   it("图片类型进入 Image Preview 分支", async () => {
+    resourceServiceMocks.readSourceResourceBytes.mockResolvedValueOnce({
+      bytes: [137, 80, 78, 71],
+      mimeType: "image/png",
+    });
     await renderWorkspace({
       resources: [resource({ originalFileName: "diagram.png", fileType: "png" })],
     });
 
-    expect(screen.getByAltText("diagram.png")).toHaveAttribute(
+    expect(await screen.findByAltText("diagram.png")).toHaveAttribute(
       "src",
-      "asset:///tmp/diagram.png",
+      "blob:resource-preview",
     );
+  });
+
+  it("图片可以插入到学习文档", async () => {
+    const user = userEvent.setup();
+    resourceServiceMocks.readSourceResourceBytes.mockResolvedValueOnce({
+      bytes: [137, 80, 78, 71],
+      mimeType: "image/png",
+    });
+    await renderWorkspace({
+      resources: [
+        resource({
+          id: "image-1",
+          originalFileName: "diagram.png",
+          fileType: "png",
+        }),
+      ],
+    });
+
+    await screen.findByAltText("diagram.png");
+    await user.click(screen.getByRole("button", { name: "插入到学习文档" }));
+
+    expect(await within(documentPanel()).findByAltText("diagram.png")).toBeInTheDocument();
+    expect(
+      within(documentPanel()).getByRole("slider", { name: "拖动调整图片大小" }),
+    ).toBeInTheDocument();
+  });
+
+  it("插入后的图片可以拖动调整大小", async () => {
+    const user = userEvent.setup();
+    resourceServiceMocks.readSourceResourceBytes.mockResolvedValueOnce({
+      bytes: [137, 80, 78, 71],
+      mimeType: "image/png",
+    });
+    await renderWorkspace({
+      resources: [
+        resource({
+          id: "image-1",
+          originalFileName: "diagram.png",
+          fileType: "png",
+        }),
+      ],
+    });
+
+    await screen.findByAltText("diagram.png");
+    await user.click(screen.getByRole("button", { name: "插入到学习文档" }));
+    const insertedImage = await within(documentPanel()).findByAltText("diagram.png");
+    expect(insertedImage).toHaveStyle({ width: "480px" });
+
+    const resizeHandle = within(documentPanel()).getByRole("slider", {
+      name: "拖动调整图片大小",
+    });
+    fireEvent.pointerDown(resizeHandle, { clientX: 0, pointerId: 1 });
+    fireEvent.pointerMove(screen.getByLabelText("文档内容"), {
+      clientX: 120,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(screen.getByLabelText("文档内容"), {
+      clientX: 120,
+      pointerId: 1,
+    });
+
+    expect(insertedImage).toHaveStyle({ width: "600px" });
+  });
+
+  it("图片后面可以继续插入文字", async () => {
+    const user = userEvent.setup();
+    resourceServiceMocks.readSourceResourceBytes.mockResolvedValueOnce({
+      bytes: [137, 80, 78, 71],
+      mimeType: "image/png",
+    });
+    await renderWorkspace({
+      resources: [
+        resource({
+          id: "image-1",
+          originalFileName: "diagram.png",
+          fileType: "png",
+        }),
+      ],
+    });
+
+    await screen.findByAltText("diagram.png");
+    await user.click(screen.getByRole("button", { name: "插入到学习文档" }));
+    const editor = screen.getByLabelText("文档内容");
+    const paragraphs = editor.querySelectorAll("p");
+    paragraphs[paragraphs.length - 1].textContent = "图片后面的说明";
+    fireEvent.input(editor);
+
+    expect(screen.getByLabelText("文档内容")).toHaveTextContent("图片后面的说明");
   });
 
   it("Office 文件进入 Unsupported Preview 分支", async () => {
@@ -308,6 +450,17 @@ describe("WorkspacePage", () => {
     expect(screen.getByText("正在加载学习文档……")).toBeInTheDocument();
   });
 
+  it("空 Document 显示正常", async () => {
+    await renderWorkspace({
+      documentPromise: Promise.resolve(document({ content: "" })),
+    });
+
+    const editor = await screen.findByLabelText("文档内容");
+
+    expect(editor).toHaveTextContent("");
+    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
+  });
+
   it("Document 保存成功", async () => {
     const user = userEvent.setup();
     documentServiceMocks.saveLearningDocument.mockResolvedValueOnce(
@@ -315,12 +468,54 @@ describe("WorkspacePage", () => {
     );
     await renderWorkspace();
     const editor = await screen.findByLabelText("文档内容");
-    await user.clear(editor);
-    await user.type(editor, "保存后的内容");
+    setEditorContent(editor, "保存后的内容");
     await user.click(screen.getByRole("button", { name: "保存" }));
 
     await screen.findAllByText("已保存");
     expect(within(documentPanel()).getByText("已保存")).toBeInTheDocument();
+  });
+
+  it("Document 自动保存成功", async () => {
+    documentServiceMocks.saveLearningDocument.mockResolvedValueOnce(
+      document({ content: "自动保存内容" }),
+    );
+    await renderWorkspace();
+    const editor = screen.getByLabelText("文档内容");
+    setEditorContent(editor, "自动保存内容");
+
+    await waitFor(() => {
+      expect(documentServiceMocks.saveLearningDocument).toHaveBeenCalledWith({
+        weekId: "week-1",
+        content: "自动保存内容",
+      });
+    });
+    expect(await within(documentPanel()).findByText("已保存")).toBeInTheDocument();
+  });
+
+  it("Cmd 或 Ctrl + S 可以保存", async () => {
+    documentServiceMocks.saveLearningDocument.mockResolvedValueOnce(
+      document({ content: "快捷保存内容" }),
+    );
+    await renderWorkspace();
+    const editor = await screen.findByLabelText("文档内容");
+    setEditorContent(editor, "快捷保存内容");
+    fireEvent.keyDown(editor, { key: "s", metaKey: true });
+
+    expect(documentServiceMocks.saveLearningDocument).toHaveBeenCalledWith({
+      weekId: "week-1",
+      content: "快捷保存内容",
+    });
+    expect(await within(documentPanel()).findByText("已保存")).toBeInTheDocument();
+  });
+
+  it("重新打开 Workspace 会显示已保存内容", async () => {
+    await renderWorkspace({
+      documentPromise: Promise.resolve(document({ content: "重新打开后仍然存在" })),
+    });
+
+    expect(await screen.findByLabelText("文档内容")).toHaveTextContent(
+      "重新打开后仍然存在",
+    );
   });
 
   it("Document 保存失败", async () => {

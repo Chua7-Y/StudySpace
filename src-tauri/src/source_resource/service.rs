@@ -6,7 +6,10 @@ use rusqlite::Connection;
 use uuid::Uuid;
 
 use super::error::SourceResourceError;
-use super::model::{ImportSourceResourcesInput, NewSourceResource, SourceResourceRecord};
+use super::model::{
+    ImportSourceResourcesInput, NewSourceResource, SourceResourceBytesResponse,
+    SourceResourceRecord,
+};
 use super::repository::{SourceResourceRepository, SourceResourceTransactionRepository};
 
 pub struct SourceResourceService;
@@ -85,6 +88,29 @@ impl SourceResourceService {
 
         fs::read_to_string(resource.local_storage_path).map_err(|_| SourceResourceError::FileRead)
     }
+
+    pub fn read_bytes(
+        connection: &Connection,
+        id: String,
+    ) -> Result<SourceResourceBytesResponse, SourceResourceError> {
+        let id = normalize_id(id, "资料 ID 不能为空")?;
+        let repository = SourceResourceRepository::new(connection);
+        let resource = repository
+            .find_by_id(&id)?
+            .ok_or(SourceResourceError::NotFound)?;
+
+        if !is_binary_preview_file_type(&resource.file_type) {
+            return Err(SourceResourceError::UnsupportedFileType);
+        }
+
+        let bytes =
+            fs::read(resource.local_storage_path).map_err(|_| SourceResourceError::FileRead)?;
+        let mime_type = mime_type_for_file_type(&resource.file_type)
+            .unwrap_or("application/octet-stream")
+            .to_string();
+
+        Ok(SourceResourceBytesResponse { bytes, mime_type })
+    }
 }
 
 fn normalize_id(id: String, empty_message: &str) -> Result<String, SourceResourceError> {
@@ -155,6 +181,10 @@ fn mime_type_for_file_type(file_type: &str) -> Option<&'static str> {
 
 fn is_text_file_type(file_type: &str) -> bool {
     matches!(file_type, "txt" | "md")
+}
+
+fn is_binary_preview_file_type(file_type: &str) -> bool {
+    matches!(file_type, "pdf" | "png" | "jpg" | "jpeg")
 }
 
 fn now_utc_iso8601() -> String {
@@ -331,6 +361,50 @@ mod tests {
         let text = SourceResourceService::read_text(&connection, resources[0].id.clone()).unwrap();
 
         assert_eq!(text, "hello");
+    }
+
+    #[test]
+    fn reads_bytes_for_imported_pdf_or_image_resource() {
+        let (temp_dir, mut connection) = open_test_database();
+        insert_course(&connection, "course-1", "Course 1");
+        insert_week(&connection, "week-1", "course-1", "Week 1");
+        let path = write_file(&temp_dir, "lecture.pdf", "%PDF");
+        let resources = SourceResourceService::import(
+            &mut connection,
+            ImportSourceResourcesInput {
+                week_id: "week-1".to_string(),
+                paths: vec![path],
+            },
+        )
+        .unwrap();
+
+        let data = SourceResourceService::read_bytes(&connection, resources[0].id.clone()).unwrap();
+
+        assert_eq!(data.bytes, b"%PDF");
+        assert_eq!(data.mime_type, "application/pdf");
+    }
+
+    #[test]
+    fn reading_bytes_for_unsupported_resource_fails() {
+        let (temp_dir, mut connection) = open_test_database();
+        insert_course(&connection, "course-1", "Course 1");
+        insert_week(&connection, "week-1", "course-1", "Week 1");
+        let path = write_file(&temp_dir, "notes.txt", "hello");
+        let resources = SourceResourceService::import(
+            &mut connection,
+            ImportSourceResourcesInput {
+                week_id: "week-1".to_string(),
+                paths: vec![path],
+            },
+        )
+        .unwrap();
+
+        let result = SourceResourceService::read_bytes(&connection, resources[0].id.clone());
+
+        assert!(matches!(
+            result,
+            Err(SourceResourceError::UnsupportedFileType)
+        ));
     }
 
     #[test]

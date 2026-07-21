@@ -12,3 +12,9 @@ export type SaveLearningDocumentInput = {
   weekId: string;
   content: string;
 };
+
+export type InsertableDocumentImage = {
+  resourceId: string;
+  fileName: string;
+  url: string;
+};

@@ -1,6 +1,6 @@
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { SourceResource } from "./types";
+import type { SourceResource, SourceResourceBytes } from "./types";
 
 type SourceResourceErrorPayload = {
   code?: string;
@@ -77,8 +77,17 @@ export async function readSourceResourceText(id: string): Promise<string> {
   });
 }
 
-export function getPreviewUrl(path: string): string {
-  return convertFileSrc(path);
+export async function readSourceResourceBytes(
+  id: string,
+): Promise<SourceResourceBytes> {
+  return invoke<SourceResourceBytes>("read_source_resource_bytes", { id }).catch(
+    (error) => {
+      throw toResourceServiceError(
+        error,
+        "无法读取该文件，文件可能已被移动或删除。",
+      );
+    },
+  );
 }
 
 export function getResourceErrorMessage(

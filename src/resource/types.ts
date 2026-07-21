@@ -11,6 +11,11 @@ export type SourceResource = {
   updatedAt: string;
 };
 
+export type SourceResourceBytes = {
+  bytes: number[];
+  mimeType: string;
+};
+
 export type ResourceKind =
   | "pdf"
   | "image"

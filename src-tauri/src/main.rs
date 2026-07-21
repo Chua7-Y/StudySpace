@@ -10,7 +10,8 @@ use course::commands::{
 use database::{DatabaseErrorPayload, DatabaseHealth, DatabaseState};
 use document::commands::{get_learning_document, save_learning_document};
 use source_resource::commands::{
-    import_source_resources, list_source_resources, read_source_resource_text,
+    import_source_resources, list_source_resources, read_source_resource_bytes,
+    read_source_resource_text,
 };
 use tauri::Manager;
 use week::commands::{
@@ -51,7 +52,8 @@ fn main() {
             save_learning_document,
             list_source_resources,
             import_source_resources,
-            read_source_resource_text
+            read_source_resource_text,
+            read_source_resource_bytes
         ])
         .run(tauri::generate_context!())
         .expect("error while running StudySpace");

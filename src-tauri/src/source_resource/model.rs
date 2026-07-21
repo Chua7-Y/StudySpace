@@ -64,3 +64,10 @@ impl From<SourceResourceRecord> for SourceResourceResponse {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceResourceBytesResponse {
+    pub bytes: Vec<u8>,
+    pub mime_type: String,
+}

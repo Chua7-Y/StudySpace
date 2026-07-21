@@ -94,9 +94,8 @@ export function useResizablePanels() {
 
   return {
     containerRef,
-    gridTemplateColumns: `${widths.left}px 8px minmax(${MIDDLE_MIN}px, 1fr) 8px ${widths.right}px`,
+    gridTemplateColumns: `${widths.left}px 8px minmax(0, 1fr) 8px ${widths.right}px`,
     widths,
-    minWidth: LEFT_MIN + MIDDLE_MIN + RIGHT_MIN + HANDLE_TOTAL_WIDTH,
     startLeftResize: startResize("left"),
     startRightResize: startResize("right"),
   };

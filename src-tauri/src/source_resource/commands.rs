@@ -3,7 +3,9 @@ use tauri::State;
 use crate::database::DatabaseState;
 
 use super::error::SourceResourceErrorPayload;
-use super::model::{ImportSourceResourcesInput, SourceResourceResponse};
+use super::model::{
+    ImportSourceResourcesInput, SourceResourceBytesResponse, SourceResourceResponse,
+};
 use super::service::SourceResourceService;
 
 #[tauri::command]
@@ -45,5 +47,15 @@ pub fn read_source_resource_text(
 ) -> Result<String, SourceResourceErrorPayload> {
     database
         .with_connection(|connection| SourceResourceService::read_text(connection, id))
+        .map_err(SourceResourceErrorPayload::from)
+}
+
+#[tauri::command]
+pub fn read_source_resource_bytes(
+    database: State<'_, DatabaseState>,
+    id: String,
+) -> Result<SourceResourceBytesResponse, SourceResourceErrorPayload> {
+    database
+        .with_connection(|connection| SourceResourceService::read_bytes(connection, id))
         .map_err(SourceResourceErrorPayload::from)
 }
