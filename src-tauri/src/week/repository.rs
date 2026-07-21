@@ -1,9 +1,7 @@
 use rusqlite::{params, Connection, OptionalExtension, Row, Transaction};
 
 use super::error::WeekError;
-use super::model::{
-    NewWeek, WeekRecord, WeekStatus, WeekStatusUpdate, WeekTitleUpdate,
-};
+use super::model::{NewWeek, WeekRecord, WeekStatus, WeekStatusUpdate, WeekTitleUpdate};
 
 pub struct WeekRepository<'connection> {
     connection: &'connection Connection,

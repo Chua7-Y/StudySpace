@@ -75,10 +75,7 @@ pub fn reorder_weeks(
 }
 
 #[tauri::command]
-pub fn delete_week(
-    database: State<'_, DatabaseState>,
-    id: String,
-) -> Result<(), WeekErrorPayload> {
+pub fn delete_week(database: State<'_, DatabaseState>, id: String) -> Result<(), WeekErrorPayload> {
     database
         .with_connection(|connection| WeekService::delete(connection, id))
         .map_err(WeekErrorPayload::from)

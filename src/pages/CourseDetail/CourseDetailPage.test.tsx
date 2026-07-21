@@ -127,10 +127,16 @@ function dragWeek(sourceTitle: string, targetTitle: string) {
   });
 }
 
-async function renderLoadedDetail(weeks: Week[] = []) {
+async function renderLoadedDetail(weeks: Week[] = [], onOpenWeek = vi.fn()) {
   courseServiceMocks.getCourse.mockResolvedValueOnce(course());
   weekServiceMocks.listWeeks.mockResolvedValueOnce(weeks);
-  render(<CourseDetailPage courseId="course-1" onBack={vi.fn()} />);
+  render(
+    <CourseDetailPage
+      courseId="course-1"
+      onBack={vi.fn()}
+      onOpenWeek={onOpenWeek}
+    />,
+  );
   await screen.findByRole("heading", { name: "INFO5995" });
   await waitFor(() => {
     expect(screen.queryByText("正在加载 Week……")).not.toBeInTheDocument();
@@ -175,6 +181,16 @@ describe("CourseDetailPage Week management", () => {
 
     expect(screen.getByText("Week 1")).toBeInTheDocument();
     expect(screen.getByText("Week 2")).toBeInTheDocument();
+  });
+
+  it("点击 Week 标题进入学习文档", async () => {
+    const user = userEvent.setup();
+    const onOpenWeek = vi.fn();
+    await renderLoadedDetail([week()], onOpenWeek);
+
+    await user.click(screen.getByRole("button", { name: "Week 1" }));
+
+    expect(onOpenWeek).toHaveBeenCalledWith("week-1");
   });
 
   it("创建 Week 成功后列表更新", async () => {
