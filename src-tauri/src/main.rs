@@ -1,11 +1,18 @@
 mod course;
 mod database;
+mod document;
+mod source_resource;
 mod week;
 
 use course::commands::{
     create_course, delete_course, get_course, list_courses, reorder_course, update_course,
 };
 use database::{DatabaseErrorPayload, DatabaseHealth, DatabaseState};
+use document::commands::{get_learning_document, save_learning_document};
+use source_resource::commands::{
+    import_source_resources, list_source_resources, read_source_resource_bytes,
+    read_source_resource_text,
+};
 use tauri::Manager;
 use week::commands::{
     create_week, delete_week, get_week, list_weeks, reorder_weeks, update_week, update_week_status,
@@ -20,6 +27,7 @@ fn database_health_check(
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let database = database::init(app.handle())?;
             app.manage(database);
@@ -39,7 +47,13 @@ fn main() {
             update_week,
             update_week_status,
             reorder_weeks,
-            delete_week
+            delete_week,
+            get_learning_document,
+            save_learning_document,
+            list_source_resources,
+            import_source_resources,
+            read_source_resource_text,
+            read_source_resource_bytes
         ])
         .run(tauri::generate_context!())
         .expect("error while running StudySpace");

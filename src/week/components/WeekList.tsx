@@ -17,6 +17,7 @@ type WeekListProps = {
   onDelete: (week: Week) => void;
   onStatusChange: (week: Week, status: WeekStatus) => void;
   onReorder: (weekIds: string[]) => void;
+  onOpen: (week: Week) => void;
 };
 
 const statusLabels: Record<WeekStatus, string> = {
@@ -33,6 +34,7 @@ export function WeekList({
   onDelete,
   onStatusChange,
   onReorder,
+  onOpen,
 }: WeekListProps) {
   const [draggedWeekId, setDraggedWeekId] = useState<string | null>(null);
   const [previewWeeks, setPreviewWeeks] = useState(weeks);
@@ -241,7 +243,7 @@ export function WeekList({
                     return;
                   }
 
-                  window.alert("学习文档功能尚未实现");
+                  onOpen(week);
                 }}
               >
                 {week.title}

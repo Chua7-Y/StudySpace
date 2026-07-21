@@ -16,7 +16,10 @@ pub const WEEK_TITLE_MAX_LENGTH: usize = 160;
 pub struct WeekService;
 
 impl WeekService {
-    pub fn create(connection: &mut Connection, input: CreateWeekInput) -> Result<WeekRecord, WeekError> {
+    pub fn create(
+        connection: &mut Connection,
+        input: CreateWeekInput,
+    ) -> Result<WeekRecord, WeekError> {
         let course_id = normalize_id(input.course_id, "课程 ID 不能为空")?;
         let title = normalize_week_title(&input.title)?;
         let transaction = connection.transaction().map_err(WeekError::from_sqlite)?;
@@ -516,7 +519,10 @@ mod tests {
         )
         .unwrap();
 
-        let ids = reordered.into_iter().map(|week| week.id).collect::<Vec<_>>();
+        let ids = reordered
+            .into_iter()
+            .map(|week| week.id)
+            .collect::<Vec<_>>();
         assert_eq!(ids, [week_3.id, week_1.id, week_2.id]);
     }
 
@@ -687,7 +693,14 @@ END;
                 "INSERT INTO source_resources (
                    id, week_id, original_file_name, file_type, local_storage_path, file_size_bytes
                  ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params!["source-1", created.id, "slides.pdf", "pdf", "/tmp/slides.pdf", 10],
+                params![
+                    "source-1",
+                    created.id,
+                    "slides.pdf",
+                    "pdf",
+                    "/tmp/slides.pdf",
+                    10
+                ],
             )
             .unwrap();
 
@@ -749,7 +762,10 @@ END;
 
         let connection = connection::open_database(&database_path).expect("reopen database again");
         let weeks = WeekService::list_by_course(&connection, "course-1".to_string()).unwrap();
-        let ids = weeks.iter().map(|week| week.id.as_str()).collect::<Vec<_>>();
+        let ids = weeks
+            .iter()
+            .map(|week| week.id.as_str())
+            .collect::<Vec<_>>();
 
         assert_eq!(ids, [week_3.id.as_str(), week_2.id.as_str()]);
         assert_eq!(weeks[1].title, "Updated Week 2");

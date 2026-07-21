@@ -10,6 +10,7 @@ import { useWeeks } from "../../week/useWeeks";
 type CourseDetailPageProps = {
   courseId: string;
   onBack: () => void;
+  onOpenWeek?: (weekId: string) => void;
 };
 
 type CourseState =
@@ -18,7 +19,11 @@ type CourseState =
   | { state: "notFound"; message: string }
   | { state: "error"; message: string };
 
-export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
+export function CourseDetailPage({
+  courseId,
+  onBack,
+  onOpenWeek,
+}: CourseDetailPageProps) {
   const [courseState, setCourseState] = useState<CourseState>({
     state: "loading",
   });
@@ -77,13 +82,18 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   }
 
   return (
-    <CourseWeeksView course={courseState.course} onBack={onBack} />
+    <CourseWeeksView
+      course={courseState.course}
+      onBack={onBack}
+      onOpenWeek={onOpenWeek}
+    />
   );
 }
 
 type CourseWeeksViewProps = {
   course: Course;
   onBack: () => void;
+  onOpenWeek?: (weekId: string) => void;
 };
 
 type ActiveWeekDialog =
@@ -92,7 +102,7 @@ type ActiveWeekDialog =
   | { type: "delete"; week: Week }
   | null;
 
-function CourseWeeksView({ course, onBack }: CourseWeeksViewProps) {
+function CourseWeeksView({ course, onBack, onOpenWeek }: CourseWeeksViewProps) {
   const {
     weeks,
     isLoading,
@@ -199,6 +209,7 @@ function CourseWeeksView({ course, onBack }: CourseWeeksViewProps) {
             onDelete={(week) => openDialog({ type: "delete", week })}
             onStatusChange={handleStatusChange}
             onReorder={handleReorder}
+            onOpen={(week) => onOpenWeek?.(week.id)}
           />
         )}
       </section>
